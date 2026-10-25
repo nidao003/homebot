@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>风水勘宅 · 八宅定盘工作台</title>
+<style>
+:root{
+  --gold:#d4af37; --goldl:#f6d365; --goldd:#8a6d1f;
+  --bg:#070a12; --panel:#0a0e18; --panel2:#0d1220; --line:#1c2434;
+  --txt:#e8e4d8; --mute:#8b93a7; --red:#ef4444; --grn:#3ddc84; --blu:#38bdf8;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{
+  background:var(--bg); color:var(--txt); overflow:hidden;
+  font-family:'Noto Sans SC','PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;
+  font-size:13px;
+}
+#app{display:grid; grid-template-columns: 300px 1fr 340px; height:100vh}
+aside{background:var(--panel); border-right:1px solid var(--line); overflow-y:auto; padding:14px}
+aside.right{border-right:none; border-left:1px solid var(--line)}
+h1{font-size:15px; color:var(--goldl); margin:0 0 2px; letter-spacing:1px}
+.sub{color:var(--mute); font-size:11px; margin-bottom:14px; line-height:1.7}
+h2{font-size:12px; color:var(--gold); margin:18px 0 8px; letter-spacing:1px;
+   border-bottom:1px solid var(--line); padding-bottom:5px}
+label{display:block; font-size:11.5px; color:var(--mute); margin:9px 0 3px}
+input[type=text],select,input[type=number]{
+  width:100%; background:var(--panel2); border:1px solid var(--line); color:var(--txt);
+  border-radius:6px; padding:6px 8px; font-size:12.5px; font-family:inherit;
+}
+input[type=range]{width:100%; accent-color:var(--gold)}
+button{
+  background:var(--panel2); border:1px solid var(--goldd); color:var(--txt);
+  border-radius:6px; padding:7px 10px; font-size:12px; cursor:pointer; font-family:inherit;
+}
+button:hover{border-color:var(--gold); color:var(--goldl)}
+button.on{background:rgba(212,175,55,.18); border-color:var(--gold); color:var(--goldl); font-weight:700}
+button.primary{background:linear-gradient(135deg,#f6d365,#aa771c); color:#12100a; font-weight:800; border:none}
+.row{display:flex; gap:6px; flex-wrap:wrap}
+.row>*{flex:1}
+.tools{display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:6px}
+.tools button{padding:8px 4px}
+#stage{position:relative; background:#05070d; overflow:hidden}
+#cv{position:absolute; inset:0; width:100%; height:100%; display:block; cursor:crosshair}
+#hud{position:absolute; left:14px; top:12px; display:flex; gap:6px; flex-wrap:wrap; z-index:3}
+#hud button{background:rgba(10,14,24,.85); backdrop-filter:blur(4px)}
+#tip{position:absolute; right:14px; top:12px; color:var(--mute); font-size:11.5px; z-index:3;
+     background:rgba(10,14,24,.8); padding:6px 10px; border-radius:6px; border:1px solid var(--line)}
+table{width:100%; border-collapse:collapse; font-size:12px}
+th,td{text-align:left; padding:5px 4px; border-bottom:1px solid var(--line)}
+th{color:var(--mute); font-weight:500; font-size:11px}
+.good{color:var(--grn)} .bad{color:var(--red)}
+.tag{display:inline-block; border:1px solid var(--line); border-radius:4px; padding:1px 5px; margin:2px 3px 0 0; font-size:10.5px; color:var(--mute)}
+.warn{color:var(--red); font-size:11px; line-height:1.7; margin-top:14px; padding-top:10px; border-top:1px solid var(--line)}
+.hint{color:var(--mute); font-size:11px; line-height:1.8}
+.kv{display:flex; justify-content:space-between; font-size:12px; padding:3px 0; border-bottom:1px dashed #1a2130}
+.kv b{color:var(--goldl); font-weight:600}
+#rooms{list-style:none; margin:8px 0 0; padding:0}
+#rooms li{display:flex; align-items:center; gap:6px; padding:5px 6px; border:1px solid var(--line);
+  border-radius:6px; margin-bottom:5px; cursor:pointer; font-size:12px}
+#rooms li:hover{border-color:var(--goldd)}
+#rooms li.sel{border-color:var(--gold); background:rgba(212,175,55,.08)}
+#rooms li i{width:10px;height:10px;border-radius:2px;flex:none}
+#rooms li span{flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+#rooms li em{font-style:normal; color:var(--gold); font-size:11px}
+#rooms li b{font-weight:500; color:var(--mute); font-size:10.5px}
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- ============ 左栏 ============ -->
+  <aside>
+    <h1>风水勘宅 · 八宅定盘</h1>
+    <div class="sub">上传户型图 → 划房间 → 定立极与朝向 → 出八宫定盘与吉凶。<br>全部在本地浏览器完成，<b style="color:var(--gold)">图片不上传</b>。</div>
+
+    <h2>① 户型底图</h2>
+    <input type="file" id="file" accept="image/*">
+    <div class="hint" id="fileinfo" style="margin-top:6px">未载入图片。可直接用「示例」试玩。</div>
+    <div class="row" style="margin-top:6px">
+      <button id="demo">载入示例</button>
+      <button id="clear">清空</button>
+    </div>
+
+    <h2>② 工具</h2>
+    <div class="tools">
+      <button class="on" data-tool="room">✎ 画房间</button>
+      <button data-tool="center">✛ 设立极</button>
+      <button data-tool="pick">☰ 选房间</button>
+      <button data-tool="bounds">▣ 调立极框</button>
+    </div>
+    <div class="hint" style="margin-top:8px" id="toolhint">
+      画房间：在图上逐点单击 → 双击闭合 → 填名称。<br>
+      立极框＝主结构外接矩形（阳台/挑板通常不计入）。
+    </div>
+
+    <h2>③ 房间</h2>
+    <ul id="rooms"></ul>
+    <div class="hint">单击选中，双击改名/删除。</div>
+
+    <h2>④ 定向与立极</h2>
+    <label>正北方向（图像正上方对应的真实方位角，度）</label>
+    <input type="range" id="north" min="0" max="359" value="0">
+    <div class="hint"><span id="northv">0°</span>　拖动罗盘或滑块调整</div>
+    <label>立极中心 (x, y)</label>
+    <div class="row">
+      <input type="number" id="cx" placeholder="x">
+      <input type="number" id="cy" placeholder="y">
+    </div>
+    <label>立极矩形 x0,y0,x1,y1</label>
+    <div class="row">
+      <input type="number" id="x0"><input type="number" id="y0">
+      <input type="number" id="x1"><input type="number" id="y1">
+    </div>
+    <label>比例（毫米 / 像素），用于算面积</label>
+    <input type="number" id="mmpx" value="20" step="0.01">
+
+    <h2>⑤ 宅卦与命卦</h2>
+    <label>宅卦（坐山所属卦 = 伏位宫）</label>
+    <select id="home"></select>
+    <label>门位宫（大门所在宫，大游年口径）</label>
+    <select id="door"></select>
+    <div class="hint">宅卦口径与门位口径是两套体系，各自成立，<b>不可混用</b>。</div>
+    <div id="mingbox" style="margin-top:8px"></div>
+    <div class="row" style="margin-top:6px"><button id="addming">＋ 加命卦</button></div>
+
+    <div class="warn">⚠️ 八宅与五行属传统堪舆经验体系，<b>非科学定论</b>。仅作居家布局参考；采光通风、家人和睦优先于方位吉凶。</div>
+  </aside>
+
+  <!-- ============ 主画布 ============ -->
+  <div id="stage">
+    <canvas id="cv"></canvas>
+    <div id="hud">
+      <button id="btn-export-png" class="primary">导出 PNG</button>
+      <button id="btn-export-svg">导出 SVG</button>
+      <button id="btn-export-json">导出 JSON</button>
+      <button id="btn-import-json">导入 JSON</button>
+      <button id="btn-print">打印</button>
+    </div>
+    <div id="tip">未载入图片</div>
+  </div>
+
+  <!-- ============ 右栏 ============ -->
+  <aside class="right">
+    <h1>定盘报告</h1>
+    <div class="sub" id="summary">载入户型图并划分房间后出报告。</div>
+
+    <h2>八宫星曜（宅卦口径）</h2>
+    <table id="stars"><tbody></tbody></table>
+
+    <h2>房间 × 命卦</h2>
+    <table id="report"><thead><tr id="rhead"></tr></thead><tbody></tbody></table>
+
+    <h2>立极与朝向</h2>
+    <div id="meta"></div>
+
+    <h2>操作</h2>
+    <div class="hint">
+      <b>撤</b>：去掉某物 · <b>补</b>：补某物 · <b>调</b>：调整布置<br>
+      选中房间后可改名 / 删除；双击画中的房间可删除。
+    </div>
+  </aside>
+</div>
+
+<script>
+/* =====================================================================
+   八宅算法（JS 版，与 Python 端 core.py 同源）
+   ===================================================================== */
+const GUA = {
+  1:{n:"坎",p:"坎一",d:"正北",w:"水",s:"☵"}, 2:{n:"坤",p:"坤二",d:"西南",w:"土",s:"☷"},
+  3:{n:"震",p:"震三",d:"正东",w:"木",s:"☳"}, 4:{n:"巽",p:"巽四",d:"东南",w:"木",s:"☴"},
+  6:{n:"乾",p:"乾六",d:"西北",w:"金",s:"☰"}, 7:{n:"兑",p:"兑七",d:"正西",w:"金",s:"☱"},
+  8:{n:"艮",p:"艮八",d:"东北",w:"土",s:"☶"}, 9:{n:"离",p:"离九",d:"正南",w:"火",s:"☲"}
+};
+const STAR_TABLE = {
+  1:{1:"伏位",4:"生气",9:"延年",3:"天医",7:"祸害",8:"五鬼",6:"六煞",2:"绝命"},
+  2:{2:"伏位",8:"生气",6:"延年",7:"天医",3:"祸害",4:"五鬼",9:"六煞",1:"绝命"},
+  3:{3:"伏位",9:"生气",4:"延年",1:"天医",2:"祸害",6:"五鬼",8:"六煞",7:"绝命"},
+  4:{4:"伏位",1:"生气",3:"延年",9:"天医",6:"祸害",7:"六煞",2:"五鬼",8:"绝命"},
+  6:{6:"伏位",7:"生气",2:"延年",8:"天医",4:"祸害",3:"五鬼",1:"六煞",9:"绝命"},
+  7:{7:"伏位",6:"生气",8:"延年",2:"天医",1:"祸害",9:"五鬼",4:"六煞",3:"绝命"},
+  8:{8:"伏位",2:"生气",7:"延年",6:"天医",9:"祸害",1:"五鬼",3:"六煞",4:"绝命"},
+  9:{9:"伏位",3:"生气",1:"延年",4:"天医",8:"祸害",2:"六煞",6:"绝命",7:"五鬼"}
+};
+const LUCKY = new Set(["伏位","生气","延年","天医"]);
+const PAL_BY_BEARING = [8,3,4,9,2,7,6,1];   // 0-45艮 45-90震 90-135巽 135-180离 180-225坤 225-270兑 270-315乾 315-360坎
+const SHAN = ["壬子癸","丑艮寅","甲卯乙","辰巽巳","丙午丁","未坤申","庚酉辛","戌乾亥"];
+const SHAN_GUA = {壬:1,子:1,癸:1,丑:8,艮:8,寅:8,甲:3,卯:3,乙:3,辰:4,巽:4,巳:4,
+  丙:9,午:9,丁:9,未:2,坤:2,申:2,庚:7,酉:7,辛:7,戌:6,乾:6,亥:6};
+const SHAN24 = ["壬","子","癸","丑","艮","寅","甲","卯","乙","辰","巽","巳",
+                 "丙","午","丁","未","坤","申","庚","酉","辛","戌","乾","亥"];
+
+const POLY_AREA = p => { let s=0; for(let i=0;i<p.length;i++){const a=p[i],b=p[(i+1)%p.length]; s+=a[0]*b[1]-b[0]*a[1];} return Math.abs(s)/2; };
+const POLY_CENT = p => { const a=POLY_AREA(p); if(!a) return p[0]||[0,0]; let cx=0,cy=0;
+  for(let i=0;i<p.length;i++){const A=p[i],B=p[(i+1)%p.length]; const cr=A[0]*B[1]-B[0]*A[1];
+    cx+=(A[0]+B[0])*cr; cy+=(A[1]+B[1])*cr;} return [cx/(6*a), cy/(6*a)]; };
+function signedArea(p){ let s=0; for(let i=0;i<p.length;i++){const a=p[i],b=p[(i+1)%p.length]; s+=a[0]*b[1]-b[0]*a[1];} return s/2; }
+function clipConvex(subject, clip){
+  if(!subject.length||clip.length<3) return [];
+  const sign = signedArea(clip)>=0?1:-1;
+  let out = subject.slice();
+  for(let i=0;i<clip.length;i++){
+    const a=clip[i], b=clip[(i+1)%clip.length], ex=b[0]-a[0], ey=b[1]-a[1];
+    const side = p => sign*(ex*(p[1]-a[1]) - ey*(p[0]-a[0]));
+    const nw=[]; const m=out.length;
+    for(let j=0;j<m;j++){
+      const cur=out[j], nxt=out[(j+1)%m], dc=side(cur), dn=side(nxt);
+      if(dc>=0) nw.push(cur);
+      if((dc>0&&dn<0)||(dc<0&&dn>0)){ const t=dc/(dc-dn);
+        nw.push([cur[0]+t*(nxt[0]-cur[0]), cur[1]+t*(nxt[1]-cur[1])]); }
+    }
+    out=nw; if(!out.length) return [];
+  }
+  return out;
+}
+const bearingOf = (pt, c, north) => {
+  const dx=pt[0]-c[0], dy=pt[1]-c[1];
+  if(!dx&&!dy) return north%360;
+  return (north + Math.atan2(dx,-dy)*180/Math.PI + 360) % 360;
+};
+const palaceOfBearing = b => PAL_BY_BEARING[Math.floor(((b%360)+360)%360/45)%8];
+function bisector(b0,b1){ let d=((b1-b0)%360+360)%360; if(d>180) d-=360; return (b0+d/2+360)%360; }
+
+function gridRegions(center, bounds, north){
+  const [x0,y0,x1,y1]=bounds;
+  const A=[x0,y0],B=[x1,y0],C=[x1,y1],D=[x0,y1];
+  const N=[(x0+x1)/2,y0],E=[x1,(y0+y1)/2],S=[(x0+x1)/2,y1],W=[x0,(y0+y1)/2];
+  const tris=[[W,A],[A,N],[N,B],[B,E],[E,C],[C,S],[S,D],[D,W]];
+  return tris.map(([p1,p2])=>{
+    const b1=bearingOf(p1,center,north), b2=bearingOf(p2,center,north);
+    const bis=bisector(b1,b2);
+    return {poly:[center,p1,p2], palace:palaceOfBearing(bis), bisector:bis};
+  });
+}
+const SPLIT=0.45;
+function assignRooms(rooms, center, bounds, north){
+  const okBounds = bounds && bounds.length===4 && bounds.every(v=>Number.isFinite(v))
+                   && bounds[2]>bounds[0] && bounds[3]>bounds[1];
+  const regs = okBounds ? gridRegions(center,bounds,north) : [];
+  const out={};
+  for(const r of rooms){
+    if(!regs.length) continue;
+    const area = POLY_AREA(r.poly)||1;
+    const scored = regs.map(g=>({pal:g.palace, a:POLY_AREA(clipConvex(r.poly,g.poly))}))
+                       .sort((x,y)=>y.a-x.a);
+    const top=scored[0], share=top.a/area;
+    let pal, by;
+    if(share < SPLIT){ pal=palaceOfBearing(bearingOf(POLY_CENT(r.poly),center,north)); by="centroid"; }
+    else { pal=top.pal; by="overlap"; }
+    out[r.id]={palace:pal, share, by, split: share<SPLIT,
+               runner:scored[1]?scored[1].pal:null, runnerShare:scored[1]?scored[1].a/area:0};
+  }
+  return out;
+}
+
+/* =====================================================================
+   状态
+   ===================================================================== */
+const S = {
+  img:null, imgW:0, imgH:0, fileName:"",
+  center:[500,500], bounds:[200,200,800,800], north:0, mmpx:20,
+  rooms:[], tool:"room", drawing:null, sel:null, nextId:1,
+  home:6, door:8, mings:[{name:"甲",palace:9},{name:"乙",palace:6}]
+};
+const COLORS=["#10141c","#141019","#151109","#150f12","#12141c","#0f1626","#0d1220","#241c08","#131a26","#1a1410"];
+
+/* =====================================================================
+   画布
+   ===================================================================== */
+window.onerror=(m,src,l,c,e)=>{ const t=document.getElementById("tip"); if(t) t.textContent="ERR "+m+" @"+l; };
+const cv=document.getElementById("cv"), ctx=cv.getContext("2d");
+let DPR=1, view={scale:1,ox:0,oy:0};
+function resize(){
+  const st=document.getElementById("stage");
+  DPR=Math.min(2, window.devicePixelRatio||1);
+  cv.width=st.clientWidth*DPR; cv.height=st.clientHeight*DPR;
+  fitView(); draw();
+}
+function fitView(){
+  if(!S.imgW) return;
+  const st=document.getElementById("stage");
+  const pad=40;
+  const sc=Math.min((st.clientWidth-pad*2)/S.imgW,(st.clientHeight-pad*2)/S.imgH);
+  view.scale=sc;
+  view.ox=(st.clientWidth-S.imgW*sc)/2;
+  view.oy=(st.clientHeight-S.imgH*sc)/2;
+}
+const toImg=(mx,my)=>[(mx-view.ox)/view.scale,(my-view.oy)/view.scale];
+const toScr=(ix,iy)=>[ix*view.scale+view.ox, iy*view.scale+view.oy];
+
+function draw(){
+  const W=cv.width/DPR, H=cv.height/DPR;
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle="#05070d"; ctx.fillRect(0,0,W,H);
+  if(!S.img) return;
+
+  // 底图
+  ctx.save();
+  ctx.globalAlpha=0.55;
+  ctx.drawImage(S.img, view.ox, view.oy, S.imgW*view.scale, S.imgH*view.scale);
+  ctx.restore();
+
+  const homeTbl=STAR_TABLE[S.home];
+  // 八宫区
+  if(S.bounds){
+    const regs=gridRegions(S.center,S.bounds,S.north);
+    regs.forEach(g=>{
+      const st=homeTbl[g.palace], good=LUCKY.has(st);
+      ctx.beginPath();
+      g.poly.forEach((p,i)=>{const q=toScr(p[0],p[1]); i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]);});
+      ctx.closePath();
+      ctx.fillStyle = good? "rgba(212,175,55,.15)":"rgba(239,68,68,.13)";
+      ctx.fill();
+      ctx.strokeStyle="rgba(212,175,55,.35)"; ctx.lineWidth=1; ctx.stroke();
+    });
+    // 立极框
+    const b=S.bounds;
+    ctx.setLineDash([7,5]); ctx.strokeStyle="rgba(212,175,55,.8)"; ctx.lineWidth=1.4;
+    ctx.beginPath();
+    [[b[0],b[1]],[b[2],b[1]],[b[2],b[3]],[b[0],b[3]]].forEach((p,i)=>{const q=toScr(p[0],p[1]); i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]);});
+    ctx.closePath(); ctx.stroke(); ctx.setLineDash([]);
+  }
+
+  // 房间
+  const assign=assignRooms(S.rooms,S.center,S.bounds,S.north);
+  S.rooms.forEach(r=>{
+    ctx.beginPath();
+    r.poly.forEach((p,i)=>{const q=toScr(p[0],p[1]); i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]);});
+    ctx.closePath();
+    ctx.fillStyle=r.color; ctx.fill();
+    ctx.strokeStyle= (S.sel===r.id)? "#f6d365":"rgba(212,175,55,.55)";
+    ctx.lineWidth= (S.sel===r.id)?2.2:1.2; ctx.stroke();
+  });
+
+  // 房间标注
+  S.rooms.forEach(r=>{
+    const a=assign[r.id]; if(!a) return;
+    const c=POLY_CENT(r.poly), q=toScr(c[0],c[1]);
+    const st=homeTbl[a.palace], good=LUCKY.has(st);
+    ctx.textAlign="center";
+    ctx.font="600 13px 'Noto Sans SC',sans-serif"; ctx.fillStyle="#f6d365";
+    ctx.fillText(r.name, q[0], q[1]-14);
+    ctx.font="11px 'Noto Sans SC',sans-serif"; ctx.fillStyle="#8b93a7";
+    ctx.fillText(`${GUA[a.palace].p} · ${GUA[a.palace].d}`, q[0], q[1]+1);
+    ctx.fillStyle= good? "#3ddc84":"#ef4444";
+    ctx.fillText(`宅卦 ${st}${good?" ✓":" ✗"}`, q[0], q[1]+15);
+    let dy=29;
+    S.mings.forEach(m=>{
+      const ms=STAR_TABLE[m.palace][a.palace], ok=LUCKY.has(ms);
+      ctx.fillStyle= ok? "#3ddc84":"#ef4444";
+      ctx.fillText(`${m.name} ${ms}${ok?" ✓":" ✗"}`, q[0], q[1]+dy);
+      dy+=13;
+    });
+    // 跨宫提示
+    if(a.split){
+      ctx.fillStyle="#f6d365"; ctx.font="10px sans-serif";
+      ctx.fillText(`跨宫(主${GUA[a.palace].n})`, q[0], q[1]+dy+2);
+    }
+  });
+
+  // 立极中心
+  const c=toScr(S.center[0],S.center[1]);
+  ctx.fillStyle="#f6d365"; ctx.beginPath(); ctx.arc(c[0],c[1],4,0,7); ctx.fill();
+  ctx.strokeStyle="rgba(246,211,101,.6)"; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.arc(c[0],c[1],9,0,7); ctx.stroke();
+
+  // 正在画的房间
+  if(S.drawing && S.drawing.length){
+    ctx.beginPath();
+    S.drawing.forEach((p,i)=>{const q=toScr(p[0],p[1]); i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]);});
+    ctx.strokeStyle="#f6d365"; ctx.lineWidth=1.6; ctx.stroke();
+    S.drawing.forEach(p=>{const q=toScr(p[0],p[1]);
+      ctx.fillStyle="#f6d365"; ctx.beginPath(); ctx.arc(q[0],q[1],3,0,7); ctx.fill();});
+  }
+
+  // 罗盘
+  drawCompass(W-92, 92, 62);
+  // 提示
+  document.getElementById("tip").textContent =
+    `${S.fileName||"未载入图片"} ${S.imgW}×${S.imgH}　正北 ${S.north}°　房间 ${S.rooms.length}`;
+}
+
+function drawCompass(cx,cy,r){
+  ctx.save();
+  ctx.beginPath(); ctx.arc(cx,cy,r,0,7);
+  ctx.fillStyle="rgba(10,14,24,.88)"; ctx.fill();
+  ctx.strokeStyle="#d4af37"; ctx.lineWidth=1.4; ctx.stroke();
+  for(let k=0;k<8;k++){
+    const ang=(S.north+45*k-90)*Math.PI/180;
+    const lx=cx+r*Math.cos(ang), ly=cy+r*Math.sin(ang);
+    ctx.font="600 13px 'Noto Sans SC',sans-serif"; ctx.textAlign="center";
+    ctx.fillStyle="#f6d365"; ctx.fillText(GUA[PAL_BY_BEARING[k]].n, lx, ly+4);
+  }
+  for(let k=0;k<24;k++){
+    const ang=(S.north+15*k-90)*Math.PI/180;
+    ctx.fillStyle="#8a6d1f";
+    ctx.beginPath(); ctx.arc(cx+(r-5)*Math.cos(ang), cy+(r-5)*Math.sin(ang), 1.1, 0, 7); ctx.fill();
+  }
+  const ang=(S.north-90)*Math.PI/180;
+  const tx=cx+(r+14)*Math.cos(ang), ty=cy+(r+14)*Math.sin(ang);
+  const bx=cx+r*0.45*Math.cos(ang), by=cy+r*0.45*Math.sin(ang);
+  ctx.beginPath(); ctx.moveTo(tx,ty); ctx.lineTo(bx-4,by-2.5); ctx.lineTo(bx+4,by+2.5); ctx.closePath();
+  ctx.fillStyle="#38bdf8"; ctx.fill();
+  ctx.restore();
+}
+
+/* =====================================================================
+   交互
+   ===================================================================== */
+let dragMode=null, dragStart=null;
+cv.addEventListener("mousedown", e=>{
+  if(!S.img) return;
+  const r=cv.getBoundingClientRect();
+  const mx=e.clientX-r.left, my=e.clientY-r.top;
+  const p=toImg(mx,my);
+  if(S.tool==="center"){ S.center=[Math.round(p[0]),Math.round(p[1])]; syncInputs(); draw(); return; }
+  if(S.tool==="room"){ S.drawing=S.drawing||[]; S.drawing.push([Math.round(p[0]),Math.round(p[1])]); draw(); return; }
+  if(S.tool==="pick"){
+    const hit=S.rooms.slice().reverse().find(rm=>pointInPoly(p,rm.poly));
+    S.sel=hit?hit.id:null; renderRoomList(); draw(); return;
+  }
+  if(S.tool==="bounds"){
+    // 拖角
+    const b=S.bounds, idx=cornerHit(p,b);
+    if(idx>=0){ dragMode="corner"; dragStart={idx,p}; }
+    else if(Math.hypot(p[0]-S.center[0],p[1]-S.center[1])<12){ dragMode="center"; dragStart={p}; }
+    return;
+  }
+});
+cv.addEventListener("mousemove", e=>{
+  if(!S.img) return;
+  const r=cv.getBoundingClientRect();
+  const p=toImg(e.clientX-r.left, e.clientY-r.top);
+  if(dragMode==="corner"){
+    const b=S.bounds.slice(), i=dragStart.idx;
+    b[i*2]=Math.round(p[0]); b[i*2+1]=Math.round(p[1]);
+    b[0]=Math.min(b[0],b[2]); b[1]=Math.min(b[1],b[3]);
+    b[2]=Math.max(b[0],b[2]); b[3]=Math.max(b[1],b[3]);
+    S.bounds=b; syncInputs(); draw();
+  } else if(dragMode==="center"){
+    S.center=[Math.round(p[0]),Math.round(p[1])]; syncInputs(); draw();
+  }
+});
+window.addEventListener("mouseup",()=>{ dragMode=null; });
+cv.addEventListener("dblclick", e=>{
+  if(S.tool==="room" && S.drawing && S.drawing.length>=3){
+    const name=prompt("房间名称（如 客厅 / 主卧 / 厨房）", "房间");
+    if(name){
+      S.rooms.push({id:"r"+(S.nextId++), name:name, poly:S.drawing, color:COLORS[S.rooms.length%COLORS.length]});
+    }
+    S.drawing=null; renderRoomList(); draw();
+  }
+});
+function pointInPoly(p,poly){
+  let inside=false;
+  for(let i=0,j=poly.length-1;i<poly.length;j=i++){
+    const xi=poly[i][0],yi=poly[i][1],xj=poly[j][0],yj=poly[j][1];
+    if(((yi>p[1])!==(yj>p[1])) && (p[0]<(xj-xi)*(p[1]-yi)/(yj-yi)+xi)) inside=!inside;
+  }
+  return inside;
+}
+function cornerHit(p,b){
+  const cs=[[b[0],b[1]],[b[2],b[1]],[b[2],b[3]],[b[0],b[3]]];
+  for(let i=0;i<4;i++) if(Math.hypot(p[0]-cs[i][0],p[1]-cs[i][1])<14) return i;
+  return -1;
+}
+document.querySelectorAll("[data-tool]").forEach(b=>{
+  b.onclick=()=>{
+    document.querySelectorAll("[data-tool]").forEach(x=>x.classList.remove("on"));
+    b.classList.add("on"); S.tool=b.dataset.tool; S.drawing=null;
+    document.getElementById("toolhint").innerHTML={
+      room:"画房间：在图上逐点单击 → 双击闭合 → 填名称。",
+      center:"设立极：点击图上任意点作为太极点（主结构几何中心）。",
+      pick:"选房间：点击房间选中，可改名或删除。",
+      bounds:"调立极框：拖动四角 / 拖中间点挪动整个框。"
+    }[S.tool];
+    draw();
+  };
+});
+document.getElementById("north").oninput=e=>{ S.north=+e.target.value; document.getElementById("northv").textContent=S.north+"°"; draw(); renderReport(); };
+["cx","cy","x0","y0","x1","y1","mmpx"].forEach(id=>{
+  document.getElementById(id).oninput=e=>{
+    const v=parseFloat(e.target.value)||0;
+    if(id==="cx") S.center[0]=v; else if(id==="cy") S.center[1]=v;
+    else if(id==="x0") S.bounds[0]=v; else if(id==="y0") S.bounds[1]=v;
+    else if(id==="x1") S.bounds[2]=v; else if(id==="y1") S.bounds[3]=v;
+    else if(id==="mmpx") S.mmpx=v;
+    draw(); renderReport();
+  };
+});
+function syncInputs(){
+  document.getElementById("cx").value=Math.round(S.center[0]);
+  document.getElementById("cy").value=Math.round(S.center[1]);
+  document.getElementById("x0").value=Math.round(S.bounds[0]);
+  document.getElementById("y0").value=Math.round(S.bounds[1]);
+  document.getElementById("x1").value=Math.round(S.bounds[2]);
+  document.getElementById("y1").value=Math.round(S.bounds[3]);
+}
+
+/* =====================================================================
+   图片载入
+   ===================================================================== */
+document.getElementById("file").onchange=e=>{
+  const f=e.target.files[0]; if(!f) return;
+  const img=new Image();
+  img.onload=()=>{
+    S.img=img; S.imgW=img.naturalWidth; S.imgH=img.naturalHeight; S.fileName=f.name;
+    S.center=[Math.round(S.imgW/2),Math.round(S.imgH/2)];
+    S.bounds=[Math.round(S.imgW*0.1),Math.round(S.imgH*0.1),Math.round(S.imgW*0.9),Math.round(S.imgH*0.9)];
+    document.getElementById("fileinfo").textContent=`${f.name} ${S.imgW}×${S.imgH}`;
+    fitView(); syncInputs(); draw();
+  };
+  img.src=URL.createObjectURL(f);
+};
+document.getElementById("demo").onclick=()=>{
+  const c=document.createElement("canvas"); c.width=1000; c.height=1000;
+  const g=c.getContext("2d");
+  g.fillStyle="#e8e4d8"; g.fillRect(0,0,1000,1000);
+  g.strokeStyle="#333"; g.lineWidth=6;
+  const rect=(x,y,w,h)=>{g.strokeRect(x,y,w,h);};
+  rect(200,200,600,600);
+  rect(200,200,180,150); rect(560,200,240,120); rect(700,350,100,200);
+  rect(700,600,100,200); rect(600,700,200,100); rect(200,700,200,100);
+  rect(120,560,80,240); rect(120,200,80,220);
+  g.fillStyle="#333"; g.fillRect(560,200,40,10);
+  {
+    const img=c;
+    S.img=img; S.imgW=1000; S.imgH=1000; S.fileName="示例户型（虚构）";
+    S.center=[500,500]; S.bounds=[200,200,800,800]; S.north=0; S.rooms=[];
+    [["厨房",[[210,210],[380,210],[380,300],[210,300]]],
+     ["客厅",[[560,210],[790,210],[790,330],[560,330]]],
+     ["主卧",[[700,340],[790,340],[790,560],[700,560]]],
+     ["次卧",[[700,600],[790,600],[790,790],[700,790]]],
+     ["卫生间",[[600,700],[790,700],[790,790],[600,790]]],
+     ["书房",[[210,700],[400,700],[400,790],[210,790]]],
+     ["阳台",[[120,560],[200,560],[200,790],[120,790]]],
+     ["玄关",[[120,210],[200,210],[200,420],[120,420]]],
+     ["大门",[[560,200],[600,200],[600,210],[560,210]]]
+    ].forEach((r,i)=>S.rooms.push({id:"r"+(S.nextId++),name:r[0],poly:r[1],color:COLORS[i%COLORS.length]}));
+    document.getElementById("fileinfo").textContent="示例户型（虚构）1000×1000";
+    document.getElementById("north").value=0; document.getElementById("northv").textContent="0°";
+    fitView(); syncInputs(); renderRoomList(); renderReport(); draw();
+  }
+};
+document.getElementById("clear").onclick=()=>{
+  S.img=null; S.rooms=[]; S.sel=null; S.nextId=1;
+  document.getElementById("fileinfo").textContent="未载入图片。";
+  renderRoomList(); draw();
+};
+
+/* =====================================================================
+   宅卦 / 门位 / 命卦
+   ===================================================================== */
+function fillGuas(sel){
+  const opts=[1,2,3,4,6,7,8,9].map(g=>`<option value="${g}">${GUA[g].p}（${GUA[g].d} · ${GUA[g].w}）</option>`).join("");
+  sel.innerHTML=opts; sel.value=String(sel.value);
+}
+fillGuas(document.getElementById("home"));
+fillGuas(document.getElementById("door"));
+document.getElementById("home").value="6";
+document.getElementById("door").value="8";
+document.getElementById("home").onchange=e=>{S.home=+e.target.value; renderReport(); draw();};
+document.getElementById("door").onchange=e=>{S.door=+e.target.value; renderReport(); draw();};
+
+function renderMings(){
+  const box=document.getElementById("mingbox");
+  box.innerHTML="";
+  S.mings.forEach((m,i)=>{
+    const wrap=document.createElement("div");
+    wrap.style.cssText="display:flex;gap:4px;margin-bottom:5px";
+    const nm=document.createElement("input");
+    nm.type="text"; nm.value=m.name; nm.placeholder="称呼";
+    nm.oninput=e=>{m.name=e.target.value; renderReport(); draw();};
+    const sel=document.createElement("select");
+    sel.innerHTML=[1,2,3,4,6,7,8,9].map(g=>`<option value="${g}">${GUA[g].n}</option>`).join("");
+    sel.value=String(m.palace);
+    sel.onchange=e=>{m.palace=+e.target.value; renderReport(); draw();};
+    const del=document.createElement("button");
+    del.textContent="×"; del.style.flex="0 0 28px";
+    del.onclick=()=>{S.mings.splice(i,1); renderMings(); renderReport(); draw();};
+    wrap.append(nm,sel,del); box.appendChild(wrap);
+  });
+}
+document.getElementById("addming").onclick=()=>{
+  S.mings.push({name:"命"+(S.mings.length+1), palace:9});
+  renderMings(); renderReport(); draw();
+};
+renderMings();
+
+/* =====================================================================
+   报告
+   ===================================================================== */
+function renderRoomList(){
+  const ul=document.getElementById("rooms");
+  ul.innerHTML="";
+  S.rooms.forEach(r=>{
+    const li=document.createElement("li");
+    li.className = S.sel===r.id?"sel":"";
+    li.innerHTML=`<i style="background:${r.color}"></i><span>${r.name}</span><b data-a="a"></b>`;
+    li.onclick=()=>{ S.sel=r.id; renderRoomList(); draw(); };
+    li.ondblclick=()=>{
+      const nm=prompt("房间名称", r.name); if(nm) r.name=nm;
+      const idx=S.rooms.indexOf(r);
+      if(confirm("删除房间「"+r.name+"」？")) S.rooms.splice(idx,1);
+      renderRoomList(); renderReport(); draw();
+    };
+    ul.appendChild(li);
+  });
+}
+function renderReport(){
+  const homeTbl=STAR_TABLE[S.home], doorTbl=STAR_TABLE[S.door];
+  // 八宫表
+  const tb=document.querySelector("#stars tbody"); tb.innerHTML="";
+  [1,2,3,4,6,7,8,9].forEach(g=>{
+    const st=homeTbl[g], dts=doorTbl[g];
+    const tr=document.createElement("tr");
+    tr.innerHTML=`<td>${GUA[g].p}</td><td>${GUA[g].d}</td>
+      <td class="${LUCKY.has(st)?"good":"bad"}">${st}</td>
+      <td class="${LUCKY.has(dts)?"good":"bad"}" title="门位口径">${dts}</td>`;
+    tb.appendChild(tr);
+  });
+  // 房间表
+  const head=document.getElementById("rhead"); head.innerHTML="";
+  head.innerHTML=`<th>房间</th><th>宫位</th><th>宅卦</th>`+
+    S.mings.map(m=>`<th>${m.name}</th>`).join("")+
+    `<th>面积</th>`;
+  const body=document.querySelector("#report tbody"); body.innerHTML="";
+  const assign=assignRooms(S.rooms,S.center,S.bounds,S.north);
+  S.rooms.forEach(r=>{
+    const a=assign[r.id]; if(!a) return;
+    const st=homeTbl[a.palace];
+    const area=POLY_AREA(r.poly)*(S.mmpx*S.mmpx/1e6);
+    const tr=document.createElement("tr");
+    tr.innerHTML=`<td>${r.name}</td><td>${GUA[a.palace].p}</td>
+      <td class="${LUCKY.has(st)?"good":"bad"}">${st}</td>`+
+      S.mings.map(m=>{
+        const ms=STAR_TABLE[m.palace][a.palace], ok=LUCKY.has(ms);
+        return `<td class="${ok?"good":"bad"}">${ms}</td>`;
+      }).join("")+
+      `<td>${area.toFixed(1)}㎡</td>`;
+    tr.onclick=()=>{S.sel=r.id; renderRoomList(); draw();};
+    body.appendChild(tr);
+  });
+  // meta
+  const m=document.getElementById("meta");
+  m.innerHTML=`
+    <div class="kv"><span>宅卦（伏位）</span><b>${GUA[S.home].p} · ${GUA[S.home].d}</b></div>
+    <div class="kv"><span>门位（伏位）</span><b>${GUA[S.door].p} · ${GUA[S.door].d}</b></div>
+    <div class="kv"><span>正北方位角</span><b>${S.north}°</b></div>
+    <div class="kv"><span>立极中心</span><b>${Math.round(S.center[0])}, ${Math.round(S.center[1])}</b></div>
+    <div class="kv"><span>立极框</span><b>${S.bounds.join(", ")}</b></div>
+    <div class="kv"><span>房间数</span><b>${S.rooms.length}</b></div>`;
+  const sum=document.getElementById("summary");
+  sum.innerHTML=`${GUA[S.home].p}（坐${GUA[S.home].d}）｜门在${GUA[S.door].p}｜${S.rooms.length} 个房间`;
+  // 房间列表里的宫位
+  S.rooms.forEach((r,i)=>{
+    const el=document.querySelectorAll("#rooms li")[i];
+    if(!el) return;
+    const a=assign[r.id];
+    el.querySelector("b").textContent = a? GUA[a.palace].n : "";
+  });
+}
+
+/* =====================================================================
+   导出
+   ===================================================================== */
+function exportPNG(){
+  const a=document.createElement("a");
+  a.download="八宅定盘图.png"; a.href=cv.toDataURL("image/png"); a.click();
+}
+function exportSVG(){
+  const homeTbl=STAR_TABLE[S.home];
+  const W=cv.width/DPR, H=cv.height/DPR;
+  const parts=[`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">`];
+  parts.push(`<rect width="${W}" height="${H}" fill="#070a12"/>`);
+  if(S.img){
+    parts.push(`<image href="${S.img.src||S.img.toDataURL()}" x="${view.ox}" y="${view.oy}" width="${S.imgW*view.scale}" height="${S.imgH*view.scale}" opacity="0.55"/>`);
+  }
+  const assign=assignRooms(S.rooms,S.center,S.bounds,S.north);
+  if(S.bounds){
+    gridRegions(S.center,S.bounds,S.north).forEach(g=>{
+      const st=homeTbl[g.palace], good=LUCKY.has(st);
+      const pts=g.poly.map(p=>toScr(p[0],p[1]).map(v=>v.toFixed(1)).join(",")).join(" ");
+      parts.push(`<polygon points="${pts}" fill="${good?"#d4af37":"#ef4444"}" opacity="0.14"/>`);
+    });
+  }
+  S.rooms.forEach(r=>{
+    const pts=r.poly.map(p=>toScr(p[0],p[1]).map(v=>v.toFixed(1)).join(",")).join(" ");
+    parts.push(`<polygon points="${pts}" fill="${r.color}" stroke="#d4af37"/>`);
+    const a=assign[r.id]; if(!a) return;
+    const c=toScr(POLY_CENT(r.poly)[0],POLY_CENT(r.poly)[1]);
+    const st=homeTbl[a.palace], good=LUCKY.has(st);
+    parts.push(`<text x="${c[0].toFixed(1)}" y="${(c[1]-12).toFixed(1)}" text-anchor="middle" font-size="13" fill="#f6d365" font-family="sans-serif">${r.name}</text>`);
+    parts.push(`<text x="${c[0].toFixed(1)}" y="${(c[1]+4).toFixed(1)}" text-anchor="middle" font-size="11" fill="${good?"#3ddc84":"#ef4444"}" font-family="sans-serif">${GUA[a.palace].p} 宅卦${st}</text>`);
+    S.mings.forEach((m,i)=>{
+      const ms=STAR_TABLE[m.palace][a.palace], ok=LUCKY.has(ms);
+      parts.push(`<text x="${c[0].toFixed(1)}" y="${(c[1]+18+i*13).toFixed(1)}" text-anchor="middle" font-size="10" fill="${ok?"#3ddc84":"#ef4444"}" font-family="sans-serif">${m.name} ${ms}</text>`);
+    });
+  });
+  parts.push(`</svg>`);
+  const blob=new Blob([parts.join("\n")],{type:"image/svg+xml;charset=utf-8"});
+  const a=document.createElement("a");
+  a.download="八宅定盘图.svg"; a.href=URL.createObjectURL(blob); a.click();
+}
+function exportJSON(){
+  const cfg={
+    meta:{title:"八宅定盘图", subtitle:`${GUA[S.home].p}（坐${GUA[S.home].d}）｜门在${GUA[S.door].p}`},
+    site:{center_px:S.center, bounds_px:S.bounds, north_deg:S.north, method:"grid",
+          mm_per_px:S.mmpx, home_palace:S.home, door_palace:S.door,
+          minggu:S.mings.map(m=>({name:m.name,palace:m.palace}))},
+    rooms:S.rooms.map(r=>({id:r.id,name:r.name,poly:r.poly,fill:r.color}))
+  };
+  const blob=new Blob([JSON.stringify(cfg,null,2)],{type:"application/json"});
+  const a=document.createElement("a");
+  a.download="八宅定盘.json"; a.href=URL.createObjectURL(blob); a.click();
+}
+document.getElementById("btn-import-json").onclick=()=>{
+  const inp=document.createElement("input"); inp.type="file"; inp.accept="application/json";
+  inp.onchange=()=>{
+    const f=inp.files[0]; if(!f) return;
+    const fr=new FileReader();
+    fr.onload=()=>{
+      const cfg=JSON.parse(fr.result);
+      S.center=cfg.site.center_px; S.bounds=cfg.site.bounds_px; S.north=cfg.site.north_deg;
+      S.home=cfg.site.home_palace; S.door=cfg.site.door_palace;
+      S.mings=cfg.site.minggu||[]; S.mmpx=cfg.site.mm_per_px||20;
+      S.rooms=cfg.rooms.map((r,i)=>({id:r.id||("r"+i),name:r.name,poly:r.poly,color:r.fill||COLORS[i%COLORS.length]}));
+      document.getElementById("home").value=String(S.home);
+      document.getElementById("door").value=String(S.door);
+      document.getElementById("north").value=S.north;
+      document.getElementById("northv").textContent=S.north+"°";
+      renderMings(); renderRoomList(); syncInputs(); renderReport(); draw();
+    };
+    fr.readAsText(f);
+  };
+  inp.click();
+};
+document.getElementById("btn-export-png").onclick=exportPNG;
+document.getElementById("btn-export-svg").onclick=exportSVG;
+document.getElementById("btn-export-json").onclick=exportJSON;
+document.getElementById("btn-print").onclick=()=>window.print();
+window.addEventListener("resize",resize);
+resize(); renderRoomList(); renderReport();
+if(/[?&]demo=1/.test(location.search)) document.getElementById("demo").click();
+</script>
+</body>
+</html>

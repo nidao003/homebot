@@ -1,0 +1,43 @@
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+
+# ---- 产物 / 输出（不要提交）----
+*.svg
+*.png
+*.jpg
+*.jpeg
+*.pdf
+*.webp
+out/
+dist/
+build/
+demo.svg
+out.svg
+out.json
+*.log
+
+# ---- 真实户型图 / 隐私数据（本项目铁律：真实数据一律不入库）----
+# 任何真实住址的户型图、命盘、姓名数据都不要提交。
+examples/real/
+examples/*_real*
+examples/private/
+private/
+data/private/
+*.floorplan.*
+*_floorplan.*
+*_private.*
+户型*
+
+# ---- 本地环境 ----
+.env
+.env.*
+.DS_Store
+.idea/
+.vscode/
+*.swp
