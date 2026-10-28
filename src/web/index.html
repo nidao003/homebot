@@ -144,6 +144,7 @@ th{color:var(--mute); font-weight:500; font-size:11px}
   <aside class="right">
     <h1>定盘报告</h1>
     <div class="sub" id="summary">载入户型图并划分房间后出报告。</div>
+    <div id="warn" style="display:none;margin:8px 0;padding:8px 10px;border-radius:8px;background:rgba(239,68,68,.14);border:1px solid rgba(239,68,68,.5);color:#fca5a5;font-size:12px"></div>
 
     <h2>八宫星曜（宅卦口径）</h2>
     <table id="stars"><tbody></tbody></table>
@@ -233,6 +234,21 @@ function gridRegions(center, bounds, north){
   });
 }
 const SPLIT=0.45;
+// 立极框合法性：必须是有限数且 x0<x1、y0<y1（否则八宫区无意义）
+function boundsValid(b){
+  return !!(b && b.length===4 && b.every(v=>Number.isFinite(v))
+            && b[2]>b[0] && b[3]>b[1]);
+}
+// 归一化：保证 x0<=x1、y0<=y1，避免手输反向框导致分区静默失效
+function normBounds(){
+  const b=S.bounds;
+  if(b[0]>b[2]){ const t=b[0]; b[0]=b[2]; b[2]=t; }
+  if(b[1]>b[3]){ const t=b[1]; b[1]=b[3]; b[3]=t; }
+  if(!(b[2]>b[0])) b[2]=b[0]+1;
+  if(!(b[3]>b[1])) b[3]=b[1]+1;
+  syncInputs();
+  return b;
+}
 function assignRooms(rooms, center, bounds, north){
   const okBounds = bounds && bounds.length===4 && bounds.every(v=>Number.isFinite(v))
                    && bounds[2]>bounds[0] && bounds[3]>bounds[1];
@@ -486,6 +502,7 @@ document.getElementById("north").oninput=e=>{ S.north=+e.target.value; document.
     else if(id==="x0") S.bounds[0]=v; else if(id==="y0") S.bounds[1]=v;
     else if(id==="x1") S.bounds[2]=v; else if(id==="y1") S.bounds[3]=v;
     else if(id==="mmpx") S.mmpx=v;
+    if(id==="x0"||id==="y0"||id==="x1"||id==="y1") normBounds();
     draw(); renderReport();
   };
 });
@@ -628,20 +645,35 @@ function renderReport(){
   const body=document.querySelector("#report tbody"); body.innerHTML="";
   const assign=assignRooms(S.rooms,S.center,S.bounds,S.north);
   S.rooms.forEach(r=>{
-    const a=assign[r.id]; if(!a) return;
-    const st=homeTbl[a.palace];
+    const a=assign[r.id];
     const area=POLY_AREA(r.poly)*(S.mmpx*S.mmpx/1e6);
     const tr=document.createElement("tr");
-    tr.innerHTML=`<td>${r.name}</td><td>${GUA[a.palace].p}</td>
-      <td class="${LUCKY.has(st)?"good":"bad"}">${st}</td>`+
-      S.mings.map(m=>{
-        const ms=STAR_TABLE[m.palace][a.palace], ok=LUCKY.has(ms);
-        return `<td class="${ok?"good":"bad"}">${ms}</td>`;
-      }).join("")+
-      `<td>${area.toFixed(1)}㎡</td>`;
+    if(!a){
+      // 立极框非法：房间行保留并标注，不静默丢弃
+      tr.innerHTML=`<td>${r.name}</td><td>—</td><td class="bad">未分宫</td>`+
+        S.mings.map(()=>`<td class="bad">—</td>`).join("")+
+        `<td>${area.toFixed(1)}㎡</td>`;
+      tr.title="立极框无效：x0/y0 必须小于 x1/y1";
+    } else {
+      const st=homeTbl[a.palace];
+      tr.innerHTML=`<td>${r.name}</td><td>${GUA[a.palace].p}</td>
+        <td class="${LUCKY.has(st)?"good":"bad"}">${st}</td>`+
+        S.mings.map(m=>{
+          const ms=STAR_TABLE[m.palace][a.palace], ok=LUCKY.has(ms);
+          return `<td class="${ok?"good":"bad"}">${ms}</td>`;
+        }).join("")+
+        `<td>${area.toFixed(1)}㎡</td>`;
+    }
     tr.onclick=()=>{S.sel=r.id; renderRoomList(); draw();};
     body.appendChild(tr);
   });
+  // 立极框非法警告（可见提示，不让用户对着空白报告猜）
+  const w=document.getElementById("warn");
+  if(w){
+    const bad = S.rooms.length && !boundsValid(S.bounds);
+    w.style.display = bad ? "block" : "none";
+    if(bad) w.innerHTML = "⚠ 立极框无效：x0/y0 必须小于 x1/y1。八宫分区与命卦已停算，房间面积仍可用。";
+  }
   // meta
   const m=document.getElementById("meta");
   m.innerHTML=`
@@ -688,10 +720,15 @@ function exportSVG(){
   S.rooms.forEach(r=>{
     const pts=r.poly.map(p=>toScr(p[0],p[1]).map(v=>v.toFixed(1)).join(",")).join(" ");
     parts.push(`<polygon points="${pts}" fill="${r.color}" stroke="#d4af37"/>`);
-    const a=assign[r.id]; if(!a) return;
+    const a=assign[r.id];
     const c=toScr(POLY_CENT(r.poly)[0],POLY_CENT(r.poly)[1]);
-    const st=homeTbl[a.palace], good=LUCKY.has(st);
+    // 房间名始终导出：立极框非法时只是缺宫位/命卦，不能整条静默消失
     parts.push(`<text x="${c[0].toFixed(1)}" y="${(c[1]-12).toFixed(1)}" text-anchor="middle" font-size="13" fill="#f6d365" font-family="sans-serif">${r.name}</text>`);
+    if(!a){
+      parts.push(`<text x="${c[0].toFixed(1)}" y="${(c[1]+4).toFixed(1)}" text-anchor="middle" font-size="11" fill="#8d94a1" font-family="sans-serif">— 未分宫（立极框无效）</text>`);
+      return;
+    }
+    const st=homeTbl[a.palace], good=LUCKY.has(st);
     parts.push(`<text x="${c[0].toFixed(1)}" y="${(c[1]+4).toFixed(1)}" text-anchor="middle" font-size="11" fill="${good?"#3ddc84":"#ef4444"}" font-family="sans-serif">${GUA[a.palace].p} 宅卦${st}</text>`);
     S.mings.forEach((m,i)=>{
       const ms=STAR_TABLE[m.palace][a.palace], ok=LUCKY.has(ms);
@@ -723,6 +760,7 @@ document.getElementById("btn-import-json").onclick=()=>{
     fr.onload=()=>{
       const cfg=JSON.parse(fr.result);
       S.center=cfg.site.center_px; S.bounds=cfg.site.bounds_px; S.north=cfg.site.north_deg;
+      normBounds();
       S.home=cfg.site.home_palace; S.door=cfg.site.door_palace;
       S.mings=cfg.site.minggu||[]; S.mmpx=cfg.site.mm_per_px||20;
       S.rooms=cfg.rooms.map((r,i)=>({id:r.id||("r"+i),name:r.name,poly:r.poly,color:r.fill||COLORS[i%COLORS.length]}));

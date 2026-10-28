@@ -34,6 +34,10 @@ data/private/
 *_private.*
 户型*
 
+# ---- 本地备份 ----
+*.bak-*
+*.bak
+
 # ---- 本地环境 ----
 .env
 .env.*
